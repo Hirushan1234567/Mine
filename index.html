@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>SHAN PAIR BASS</title>
+
+<style>
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:#070b12;
+    color:#fff;
+    font-family:Arial,sans-serif;
+}
+
+.card{
+    width:100%;
+    max-width:420px;
+    padding:25px;
+    border-radius:20px;
+    background:#101722;
+    box-shadow:0 0 35px rgba(0,140,255,.25);
+}
+
+.logo{
+    text-align:center;
+    font-size:30px;
+    font-weight:bold;
+    margin-bottom:8px;
+}
+
+.subtitle{
+    text-align:center;
+    color:#8d9aaa;
+    margin-bottom:25px;
+}
+
+label{
+    display:block;
+    margin-top:15px;
+    margin-bottom:7px;
+    color:#b9c5d3;
+}
+
+input{
+    width:100%;
+    padding:14px;
+    border:none;
+    outline:none;
+    border-radius:10px;
+    background:#182231;
+    color:#fff;
+    font-size:16px;
+}
+
+input:focus{
+    box-shadow:0 0 0 2px #008cff;
+}
+
+button{
+    width:100%;
+    padding:15px;
+    margin-top:20px;
+    border:none;
+    border-radius:10px;
+    background:#008cff;
+    color:#fff;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:disabled{
+    opacity:.5;
+    cursor:not-allowed;
+}
+
+#result{
+    margin-top:20px;
+    text-align:center;
+    line-height:1.6;
+}
+
+.success{
+    color:#35e88a;
+}
+
+.error{
+    color:#ff5c5c;
+}
+
+.loading{
+    color:#55baff;
+}
+
+.code{
+    margin-top:15px;
+    padding:18px;
+    border-radius:12px;
+    background:#05080d;
+    border:1px solid #008cff;
+    color:#fff;
+    font-size:25px;
+    font-weight:bold;
+    letter-spacing:4px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+    <div class="logo">
+        🤖 SHAN PAIR BASS
+    </div>
+
+    <div class="subtitle">
+        Connect your WhatsApp account
+    </div>
+
+    <label>WhatsApp Number</label>
+
+    <input
+        id="phone"
+        type="tel"
+        placeholder="947XXXXXXXX"
+        autocomplete="off"
+    >
+
+    <button
+        id="pairBtn"
+        onclick="createPair()"
+    >
+        GENERATE PAIR CODE
+    </button>
+
+    <div id="result"></div>
+
+</div>
+
+<script>
+
+/*
+================================
+PAIR BASS CONFIG
+================================
+*/
+
+/*
+ * If Pair Bass is running on the
+ * same server as this Panel:
+ */
+const PAIR_API = "http://localhost:8000";
+
+/*
+ * IMPORTANT:
+ * This must be the same API key
+ * used by SHAN_API_KEY on Pair Bass.
+ */
+const API_KEY = "your-secret-key";
+
+
+/*
+================================
+CREATE PAIR
+================================
+*/
+
+async function createPair(){
+
+    const phoneInput =
+        document.getElementById("phone");
+
+    const result =
+        document.getElementById("result");
+
+    const button =
+        document.getElementById("pairBtn");
+
+
+    /*
+     * Get phone number
+     */
+    const phone =
+        phoneInput.value
+        .replace(/\D/g,"");
+
+
+    /*
+     * Validate number
+     */
+    if(!phone){
+
+        result.innerHTML =
+            `<div class="error">
+                ❌ Please enter your WhatsApp number.
+             </div>`;
+
+        return;
+    }
+
+
+    if(phone.length < 10 || phone.length > 15){
+
+        result.innerHTML =
+            `<div class="error">
+                ❌ Invalid phone number.
+             </div>`;
+
+        return;
+    }
+
+
+    /*
+     * Automatically create Session ID
+     */
+    const sessionId =
+        "session_" + Date.now();
+
+
+    /*
+     * Disable button
+     */
+    button.disabled = true;
+
+
+    result.innerHTML =
+        `<div class="loading">
+            ⏳ Generating Pair Code...
+         </div>`;
+
+
+    try{
+
+        const response =
+            await fetch(
+                `${PAIR_API}/api/session/create`,
+                {
+                    method:"POST",
+
+                    headers:{
+                        "Content-Type":
+                            "application/json",
+
+                        "x-shan-api-key":
+                            API_KEY
+                    },
+
+                    body:JSON.stringify({
+
+                        phoneNumber:phone,
+
+                        sessionId:sessionId
+
+                    })
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        /*
+         * API error
+         */
+        if(!response.ok){
+
+            result.innerHTML =
+                `<div class="error">
+                    ❌ ${data.message || "Request failed."}
+                 </div>`;
+
+            button.disabled = false;
+
+            return;
+        }
+
+
+        /*
+         * Pair Code received
+         */
+        if(data.pairCode){
+
+            result.innerHTML = `
+                <div class="success">
+                    ✅ Pair Code Generated
+                </div>
+
+                <div class="code">
+                    ${data.pairCode}
+                </div>
+
+                <div style="margin-top:12px;color:#8d9aaa;">
+                    Status: ${data.status}
+                </div>
+            `;
+
+        }else{
+
+            result.innerHTML =
+                `<div class="loading">
+                    Status: ${data.status || "connecting"}
+                 </div>`;
+
+        }
+
+    }catch(error){
+
+        console.error(error);
+
+        result.innerHTML =
+            `<div class="error">
+                ❌ Cannot connect to Pair Bass.
+                <br><br>
+                Check Pair Bass server/API.
+             </div>`;
+
+    }
+
+
+    button.disabled = false;
+}
+
+</script>
+
+</body>
+</html>
